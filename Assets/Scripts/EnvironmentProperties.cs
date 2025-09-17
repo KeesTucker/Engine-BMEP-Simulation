@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class EnviromentProperties : MonoBehaviour
+public class EnvironmentProperties : MonoBehaviour
 {
     [Header("Air Input Properties")]
     public float altitude = 10;

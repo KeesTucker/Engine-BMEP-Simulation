@@ -152,14 +152,14 @@ public static class EngineHelperMethods
     }
 
     /// <summary>
-    /// Gets coefficent of friction of the intake system
+    /// Gets coefficient of friction of the intake system
     /// </summary>
     /// <param name="diameter">Average diameter of the system in meters, calculate using volume & length</param>
     /// <param name="roughness">Empirical material roughness, somewhere in between 0.00004 & 0.0002,
     /// Steel is 0.00015</param>
     /// <param name="intakeSystemQuality">A value from 0 to 1 dictating intake system design quality, higher is better</param>
     /// <returns></returns>
-    public static float GetCoefficentOfFriction(float diameter, float roughness, float intakeSystemQuality)
+    public static float GetCoefficientOfFriction(float diameter, float roughness, float intakeSystemQuality)
     {
         float f;
         float qualityCorrection = ((0.5f - intakeSystemQuality) / 2f + 1f); //Account for the airflow design of the system, also offsets by 1 so f is at minimum 2x that of a straight pipe since this is a manifold it will have many turns and have higher friction than a striaght pipe
@@ -254,8 +254,8 @@ public static class EngineHelperMethods
     /// Returns pressure in the cylinder at each iteration of the engine cycle.
     /// </summary>
     /// <param name="throttle">Throttle percentage, from 0-1, 1 is equal to full throttle</param>
-    /// <param name="fI">Moody's friction factor for the intake system</param>
-    /// <param name="fE">Moody's friction factor for the exhaust system</param>
+    /// <param name="intakeFrictionCoefficient">Moody's friction factor for the intake system</param>
+    /// <param name="exhaustFrictionCoefficient">Moody's friction factor for the exhaust system</param>
     /// <param name="timing">Timing/Topend specs of engine</param>
     /// <param name="crankPosition">Current crank position in the cycle</param>
     /// <param name="cylinderIndex">Current cylinder we are calculating the pressure for</param>
@@ -271,18 +271,18 @@ public static class EngineHelperMethods
     /// <param name="previousCrankPosition">Position of crank in last iteration</param>
     /// <param name="timeStep">Current timestep between iterations</param>
     /// <param name="linearIntakeVelocity">Velocity of gas going through intake port</param>
-    /// <param name="linearExhuastVelocity">Velocity of gas going through exhaust</param>
+    /// <param name="linearExhaustVelocity">Velocity of gas going through exhaust</param>
     /// <param name="topEndSpecs">Top end specs of the engine</param>
     /// <param name="airRatio">ratio of "air" to actual atmosphere gas coming into cylinder</param>
     /// <param name="atmosphereTemp">External temp</param>
     /// <returns>Returns a tuple; (pressure, intake gas velocity, data for the data/volume graph.</returns>
-    public static (float, float, float, float, float) GetPressureAtCrankPosition(float throttle, float fI, float fE, 
-        float crankPosition, int cylinderIndex, float currentChamberPressure, float currentExternalPressure, 
-        float gasDensity, float gasViscosity, BottomEnd bottomEndSpecs, IntakeSystem intakeSystemSpecs, ExhaustSystem exhaustSystemSpecs, 
-        float currentTemp, float RPM, float previousCrankPosition, float timeStep, 
-        float linearIntakeVelocity, float linearExhuastVelocity, TopEnd topEndSpecs, float airRatio, float atmosphereTemp)
+    public static (float, float, float, float, float) GetPressureAtCrankPosition(float throttle, float intakeFrictionCoefficient, float exhaustFrictionCoefficient,
+        float crankPosition, int cylinderIndex, float currentChamberPressure, float currentExternalPressure,
+        float gasDensity, float gasViscosity, BottomEnd bottomEndSpecs, IntakeSystem intakeSystemSpecs, ExhaustSystem exhaustSystemSpecs,
+        float currentTemp, float RPM, float previousCrankPosition, float timeStep,
+        float linearIntakeVelocity, float linearExhaustVelocity, TopEnd topEndSpecs, float airRatio, float atmosphereTemp)
     {
-        float data1 = 0;
+        float dataPoint = 0;
 
         //Get the current stroke/s from the crank position
         (int, string)[] strokes = GetCurrentStrokes(topEndSpecs, UnitHelperMethods.RadiansToDegrees(crankPosition));
@@ -300,12 +300,12 @@ public static class EngineHelperMethods
             //Intake stroke
             if (strokes[i].Item1 == 1)
             {
-                (float, float, float, float) intakeFlow = GetPressureAtIntakeStroke(throttle, fI, cylinderIndex, crankPosition, currentChamberPressure, 
-                    currentExternalPressure, gasDensity, gasViscosity, bottomEndSpecs, intakeSystemSpecs, 
+                (float, float, float, float) intakeFlow = GetPressureAtIntakeStroke(throttle, intakeFrictionCoefficient, cylinderIndex, crankPosition, currentChamberPressure,
+                    currentExternalPressure, gasDensity, gasViscosity, bottomEndSpecs, intakeSystemSpecs,
                     currentTemp, RPM, previousCrankPosition, linearIntakeVelocity, timeStep, topEndSpecs, atmosphereTemp);
                 currentChamberPressure = intakeFlow.Item1;
                 linearIntakeVelocity = intakeFlow.Item2;
-                data1 = intakeFlow.Item3;
+                dataPoint = intakeFlow.Item3;
                 currentTemp = intakeFlow.Item4;
             }
             //Compression stroke
@@ -321,26 +321,26 @@ public static class EngineHelperMethods
             //Exhaust stroke
             else if (strokes[i].Item1 == 4)
             {
-                (float, float, float, float) exhuastFlow = GetPressureAtExhaustStroke(fE, cylinderIndex, crankPosition, currentChamberPressure,
+                (float, float, float, float) exhaustFlow = GetPressureAtExhaustStroke(exhaustFrictionCoefficient, cylinderIndex, crankPosition, currentChamberPressure,
                     currentExternalPressure, gasDensity, gasViscosity, bottomEndSpecs, exhaustSystemSpecs,
-                    currentTemp, linearExhuastVelocity, timeStep, topEndSpecs);
-                currentChamberPressure = exhuastFlow.Item1;
-                linearExhuastVelocity = exhuastFlow.Item2;
-                data1 = exhuastFlow.Item3;
+                    currentTemp, linearExhaustVelocity, timeStep, topEndSpecs);
+                currentChamberPressure = exhaustFlow.Item1;
+                linearExhaustVelocity = exhaustFlow.Item2;
+                dataPoint = exhaustFlow.Item3;
             }
         }
-        return (currentChamberPressure, linearIntakeVelocity, linearExhuastVelocity, data1, currentTemp);
+        return (currentChamberPressure, linearIntakeVelocity, linearExhaustVelocity, dataPoint, currentTemp);
     }
 
     //WIP
-    private static (float, float, float, float) GetPressureAtIntakeStroke(float throttle, float f, int cylinderIndex, 
-        float crankPosition, float currentChamberPressure, float currentExternalPressure, float gasDensity, 
-        float gasViscosity, BottomEnd bottomEndSpecs, IntakeSystem intakeSystemSpecs, 
-        float currentTemp, float RPM, float previousCrankPosition, float currentLinearIntakeVelocity, float timeStep, 
+    private static (float, float, float, float) GetPressureAtIntakeStroke(float throttle, float frictionCoefficient, int cylinderIndex,
+        float crankPosition, float currentChamberPressure, float currentExternalPressure, float gasDensity,
+        float gasViscosity, BottomEnd bottomEndSpecs, IntakeSystem intakeSystemSpecs,
+        float currentTemp, float RPM, float previousCrankPosition, float currentLinearIntakeVelocity, float timeStep,
         TopEnd topEndSpecs, float atmosphereTemp)
     {
         //Data collection for data/volume graph.
-        float data1;
+        float dataPoint;
 
         //Get manifold specs
         float averageCrossSectionalAreaOfManifold = 
@@ -358,24 +358,23 @@ public static class EngineHelperMethods
         Re = FluidDynamicsHelperMethods.GetReynoldsNumber(Mathf.Abs(currentLinearIntakeVelocity), gasDensity, gasViscosity, aveDiameterOfManifold);
 
         //Friction force through the manifold.
-        float frictionForce = GasHelperMethods.GetFrictionForceGivenVelocity(f, gasDensity, 
-            currentLinearIntakeVelocity, intakeSystemSpecs.intakeSystemLength[cylinderIndex], 
+        float frictionForce = GasHelperMethods.GetFrictionForceGivenVelocity(frictionCoefficient, gasDensity,
+            currentLinearIntakeVelocity, intakeSystemSpecs.intakeSystemLength[cylinderIndex],
             aveDiameterOfManifold) * averageCrossSectionalAreaOfManifold;
 
-        //Correcting so friction actually makes a difference, unsure if this is correct way to do this
-        //I need to figure out a better way of doing this cause this is janky af
-        gasAccelForce = gasAccelForce - frictionForce;
+        //Account for frictional losses in the manifold
+        gasAccelForce -= frictionForce;
 
         float gasMassInManifold = (intakeSystemSpecs.intakeSystemSharedVolume +
             intakeSystemSpecs.intakeSystemIndividualVolume[cylinderIndex]) * gasDensity;
 
         //F = MA
-        float gasAcceleration = gasAccelForce / gasDensity;
-        //Accel lost due to friction
-        float gasAccelLost = frictionForce / gasDensity;
+        float gasAcceleration = gasAccelForce / gasMassInManifold;
+        //Acceleration lost due to friction
+        float gasAccelLost = frictionForce / gasMassInManifold;
 
         //Send to data/volume graph
-        data1 = frictionForce * 1000;
+        dataPoint = frictionForce * 1000;
 
         //V = a * t
         currentLinearIntakeVelocity += (gasAcceleration * timeStep) * throttle;
@@ -405,7 +404,7 @@ public static class EngineHelperMethods
 
         currentChamberPressure = GasHelperMethods.GetAirPressureAtDensity(currentChamberGasDensity, currentTemp);
 
-        return (currentChamberPressure, currentLinearIntakeVelocity, data1, currentTemp);
+        return (currentChamberPressure, currentLinearIntakeVelocity, dataPoint, currentTemp);
     }
 
     private static float GetPressureAtCompressionStroke(float currentChamberPressure)
@@ -418,14 +417,14 @@ public static class EngineHelperMethods
         return currentChamberPressure + 10000; 
     }
 
-    private static (float, float, float, float) GetPressureAtExhaustStroke(float f, int cylinderIndex,
+    private static (float, float, float, float) GetPressureAtExhaustStroke(float frictionCoefficient, int cylinderIndex,
         float crankPosition, float currentChamberPressure, float currentExternalPressure, float gasDensity,
         float gasViscosity, BottomEnd bottomEndSpecs, ExhaustSystem exhaustSystemSpecs,
         float currentTemp, float currentLinearExhaustVelocity, float timeStep,
         TopEnd topEndSpecs)
     {
         //Data collection for data/volume graph.
-        float data1;
+        float dataPoint;
 
         //Get exhaust specs
         float totalLengthOfExhaust = exhaustSystemSpecs.exhaustPipeLength[exhaustSystemSpecs.cylinderIndexToPipe[cylinderIndex]] + exhaustSystemSpecs.headerLength[cylinderIndex];
@@ -444,29 +443,26 @@ public static class EngineHelperMethods
         Re = FluidDynamicsHelperMethods.GetReynoldsNumber(Mathf.Abs(currentLinearExhaustVelocity), gasDensity, gasViscosity, averageDiameterOfExhaust);
 
         //Friction force through the exhaust.
-        float frictionForce = GasHelperMethods.GetFrictionForceGivenVelocity(f, gasDensity, 
+        float frictionForce = GasHelperMethods.GetFrictionForceGivenVelocity(frictionCoefficient, gasDensity,
             currentLinearExhaustVelocity, totalLengthOfExhaust, averageDiameterOfExhaust);
 
-        //Correcting so friction actually makes a difference, unsure if this is correct way to do this
-        //I need to figure out a better way of doing this cause this is janky af
+        //Account for frictional losses in the exhaust
         //gasAccelForce = gasAccelForce - frictionForce;
 
         float gasMassInExhaust = volumeOfExhaust * gasDensity;
 
         //F = MA
-        float gasAcceleration = gasAccelForce / gasDensity;
-        //Accel lost due to friction
-        float gasAccelLost = frictionForce / gasDensity;
+        float gasAcceleration = gasAccelForce / gasMassInExhaust;
+        //Acceleration lost due to friction
+        float gasAccelLost = frictionForce / gasMassInExhaust;
 
         //Send to data/volume graph
-        data1 = frictionForce * 1000;
+        dataPoint = frictionForce * 1000;
 
         //V = a * t
         currentLinearExhaustVelocity += gasAcceleration * timeStep;
-        //Vel lost due to friction
+        //Velocity lost due to friction (scaled for stability)
         float linearVelLost = gasAccelLost * timeStep * 100;
-
-        Debug.Log(gasAcceleration.ToString() + " " + gasAccelLost.ToString());
 
         if (currentLinearExhaustVelocity > 0)
         {
@@ -497,6 +493,6 @@ public static class EngineHelperMethods
 
         currentChamberPressure = GasHelperMethods.GetAirPressureAtDensity(currentChamberGasDensity, currentTemp);
 
-        return (currentChamberPressure, currentLinearExhaustVelocity, data1, currentTemp);
+        return (currentChamberPressure, currentLinearExhaustVelocity, dataPoint, currentTemp);
     }
 }
