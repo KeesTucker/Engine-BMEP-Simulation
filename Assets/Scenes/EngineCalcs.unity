@@ -513,14 +513,15 @@ MonoBehaviour:
   bottomEndSpecs: {fileID: 11400000, guid: be0f79f3451cd174aa77bfd47d015837, type: 2}
   intakeSystemSpecs: {fileID: 11400000, guid: 9c7239ef0bc03bf4092a59ecb5d3b28c, type: 2}
   exhaustSystemSpecs: {fileID: 11400000, guid: 6cf5515f57af9e34db7cc4438775567d, type: 2}
-  enviromentProperties: {fileID: 1344427561}
+  environmentProperties: {fileID: 1344427561}
   throttle: 1
   RPM: 6000
   currentChamberPressure: 0
   linearIntakeVelocity: 0
-  linearExhuastVelocity: 0
+  linearExhaustVelocity: 0
   currentGasTemp: 0
-  f: 0
+  intakeFrictionCoefficient: 0
+  exhaustFrictionCoefficient: 0
   MEP: 0
 --- !u!1 &1862768762
 GameObject:
@@ -681,9 +682,9 @@ MonoBehaviour:
   - {fileID: 665158563}
   - {fileID: 1862768764}
   - {fileID: 1209807899}
-  data1: []
-  data2: []
-  data3: []
+  pressurePoints: []
+  temperaturePoints: []
+  frictionPoints: []
 --- !u!4 &2012712893
 Transform:
   m_ObjectHideFlags: 0

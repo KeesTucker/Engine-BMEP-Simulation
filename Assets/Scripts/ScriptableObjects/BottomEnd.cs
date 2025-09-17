@@ -15,7 +15,7 @@ public class BottomEnd : ScriptableObject
     public float compressionRatio = 11.9f;
 
     /// <summary>
-    /// Rod length in mm. Rod length must be longer than diameter of crank so must be longer than bore + margin.
+    /// Rod length in m. Rod length must be longer than diameter of crank so must be longer than bore plus margin.
     /// </summary>
     public float rodLength = 0.114f;
 }

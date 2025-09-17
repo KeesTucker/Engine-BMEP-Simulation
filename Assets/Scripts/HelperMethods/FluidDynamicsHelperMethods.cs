@@ -5,15 +5,11 @@
     /// </summary>
     /// <param name="volumeVelocity">Volume velocity in m^3/s</param>
     /// <param name="orificeAverageCrossSectionalArea">Average cross sectional area of the hole/pipe</param>
-    /// <returns>Returns average linear spead of fluid in m/s</returns>
+    /// <returns>Returns average linear speed of fluid in m/s</returns>
     public static float GetAverageLinearVelocityOfFluidThroughOrifice(float volumeVelocity, float orificeAverageCrossSectionalArea)
     {
-        float vV = volumeVelocity;
-        float A = orificeAverageCrossSectionalArea;
-
-        float vl = vV / A;
-
-        return vl;
+        float linearVelocity = volumeVelocity / orificeAverageCrossSectionalArea;
+        return linearVelocity;
     }
 
     /// <summary>
@@ -26,8 +22,7 @@
     /// <returns>Returns Reynold's number</returns>
     public static float GetReynoldsNumber(float velocity, float density, float viscosity, float diameter)
     {
-        float Re;
-        Re = diameter * velocity * density / viscosity;
-        return Re;
+        float reynoldsNumber = diameter * velocity * density / viscosity;
+        return reynoldsNumber;
     }
 }
